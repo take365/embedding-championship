@@ -1,0 +1,22 @@
+# 基本ツール
+pandas
+numpy
+scikit-learn
+tqdm
+matplotlib
+
+# モデル系
+sentence-transformers
+torch  # PyTorch（GPU対応版がよりよい）
+
+# UMAP用
+umap-learn
+
+# その他（FastAPI連携などが必要なら追加）
+openai
+python-dotenv
+tenacity
+
+# cl-nagoya/ruri-v3-310m用
+sentencepiece>=0.1.99
+protobuf>=3.20.0
