@@ -33,11 +33,6 @@ def plot_comparison(metric_values, title, ylabel, filename, k_range,output_dir):
     for key, values in metric_values.items():
         plt.plot(k_range, values, label=key)
 
-    base_k = math.sqrt(len(k_range) * 2)
-    lower_threshold = round(base_k * 2)
-    plt.axvline(x=lower_threshold, color='gray', linestyle='--', linewidth=1)
-    plt.text(lower_threshold + 0.5, plt.ylim()[1]*0.9, '下位層開始', rotation=90, color='gray')
-
     plt.xlabel("クラスタ数 (k)")
     plt.ylabel(ylabel)
     plt.title(title)
@@ -45,20 +40,26 @@ def plot_comparison(metric_values, title, ylabel, filename, k_range,output_dir):
     plt.grid(True)
     plt.savefig(output_dir / filename)
     plt.close()
-def suggest_cluster_range(n_samples: int, level: str) -> range:
-    base_k = math.sqrt(n_samples / 2)
 
+def get_cluster_ranges(n_comments):
+    lv1 = max(2, min(10, round(n_comments ** (1 / 3))))
+    lv2 = max(2, min(1000, round(lv1 * lv1)))
+    upper_range = range(2, max(2, lv2 - 1))
+    lower_range = range(max(2, lv2 - 1), lv2 * 2 + 1)
+    return upper_range, lower_range
+
+def suggest_cluster_range(n_samples: int, level: str) -> range:
+    upper_range, lower_range = get_cluster_ranges(n_samples)
     if level == "all":
-        # 全体評価用：たとえば k=2〜4倍まで広くカバー
-        return range(round(base_k / 4), round(base_k * 4) + 1)
+        return range(upper_range.start, lower_range.stop)
     elif level == "upper":
-        return range(round(base_k / 4), round(base_k * 2) - 1)
+        return upper_range
     elif level == "lower":
-        return range(round(base_k * 2), round(base_k * 4) + 1)
+        return lower_range
     else:
         raise ValueError("level must be 'all', 'upper' or 'lower'")
     
-def generate_html_report(metrics, k_range,data_dir,output_dir):
+def generate_html_report(metrics, k_range, data_dir, output_dir, timing_info):
     html = ["<html><head><meta charset='utf-8'><title>モデル比較レポート</title></head><body>"]
 
     title_path = data_dir / "title.txt"
@@ -72,8 +73,6 @@ def generate_html_report(metrics, k_range,data_dir,output_dir):
             break
     html.append(f"<h1>{title}（{data_count}件）</h1>")
 
-    base_k = math.sqrt(data_count / 2)
-    lower_start = round(base_k * 2)
 
     model_keys = list(metrics.keys())
 
@@ -138,6 +137,11 @@ def generate_html_report(metrics, k_range,data_dir,output_dir):
                     # 各モデルごとの正しい範囲を取得（ここが重要な修正点）
                     upper_k_range = suggest_cluster_range(local_data_count, "upper")
                     lower_k_range = suggest_cluster_range(local_data_count, "lower")
+                    print(f"model={key}")
+                    print(f"local_data_count={local_data_count}")
+                    print(f"upper_k_range={upper_k_range}")
+                    print(f"lower_k_range={lower_k_range}")
+                    print(f"all={suggest_cluster_range(local_data_count, "all")}")
                     # 全体のベスト（全範囲）
                     all_k_best = max(zip(k_values, scores), key=lambda x: x[1])
 
@@ -156,7 +160,14 @@ def generate_html_report(metrics, k_range,data_dir,output_dir):
                 row_html += "</tr>"
                 html.append(row_html)
 
+            time_row = "<tr><td>処理時間（秒）</td>"
+            for key in model_keys:
+                seconds = timing_info.get(key, 0)
+                time_row += f"<td colspan='2'>{seconds:.2f}s</td>"
+            time_row += "</tr>"
+            html.append(time_row)
             html.append("</table><br>")
+
 
         html.append("<table><tr>")
         html.append(f"<td valign='top'><img src='{metric}_compare.png' width='800'></td>")
@@ -196,7 +207,7 @@ def generate_html_report(metrics, k_range,data_dir,output_dir):
                 annot_maps[key] = annot_map
 
             for i, k in enumerate(k_range):
-                if k == lower_start:
+                if k == lower_k_range:
                     colspan = 1 + len(MODELS) * (2 if metric == "silhouette" else 1)
                     html.append(f"<tr><td colspan='{colspan}' style='text-align:center; font-weight:bold;'>▼ 下位層 ▼</td></tr>")
     
@@ -236,8 +247,8 @@ def generate_html_report(metrics, k_range,data_dir,output_dir):
         html.append("</table></td></tr></table><br>")
     html.append("<p>クラスタ数の範囲は以下のように定義されています：</p>"
                 "<ul>"
-                "<li><b>上位層：</b> √(n/2) の 1/4倍 ～ 4倍</li>"
-                "<li><b>下位層：</b> √(n/2) の 2倍 ～ 4倍</li>"
+                "<li><b>上位層：</b> 2 ～ 意見数の立方根（³√n）の二乗</li>"
+                "<li><b>下位層：</b> 上記の上限 ～ その2倍（上限2000）</li>"
                 "</ul>"
                 "<p>ここで n は意見数（データ数）です。</p>")
 
@@ -265,6 +276,10 @@ def main():
     n_samples = len(df)
     k_range = suggest_cluster_range(n_samples, "all")
 
+    import time
+
+    timing_info = {}
+
     for key in MODELS:
         path = data_dir / f"{key}_umap.pkl"
         if not path.exists():
@@ -273,7 +288,11 @@ def main():
 
         print(f"📊 Evaluating {key}...")
         X = load_umap_embeddings(path)
+        start_time = time.time()
+        X = load_umap_embeddings(path)
         sil, dbi, chi, wcss = evaluate_model(X, k_range)
+        elapsed = time.time() - start_time
+        timing_info[key] = elapsed
         all_metrics[key] = {
             "silhouette": sil,
             "dbi": dbi,
@@ -285,7 +304,7 @@ def main():
         ylabel = metric.upper()
         plot_comparison(metric_data, f"{metric.upper()} Comparison", ylabel, f"{metric}_compare.png", k_range, output_dir)
 
-    generate_html_report(all_metrics, k_range, data_dir, output_dir)
+    generate_html_report(all_metrics, k_range, data_dir, output_dir, timing_info)
     print("✅ モデル比較グラフ出力完了")
 
 if __name__ == "__main__":
