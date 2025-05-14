@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 from openai import AzureOpenAI, OpenAI
 from pydantic import BaseModel
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
-
+import torch
+import numpy as np
+import random
 DOTENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../.env"))
 load_dotenv(DOTENV_PATH)
 
@@ -215,10 +217,17 @@ __local_emb_model_loading_lock = threading.Lock()
 def request_to_local_embed(texts, model_name="paraphrase-multilingual-mpnet-base-v2"):
     global __local_emb_models
 
+
+
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
     with __local_emb_model_loading_lock:
         if model_name not in __local_emb_models:
             from sentence_transformers import SentenceTransformer
-            import torch
 
             print(f"📦 モデル読み込み中: {model_name}")
             model = SentenceTransformer(model_name, trust_remote_code=True)
@@ -233,7 +242,6 @@ def request_to_local_embed(texts, model_name="paraphrase-multilingual-mpnet-base
 
     model = __local_emb_models[model_name]
 
-    # ✅ RoSEtta用のqueryプレフィックス処理
     if model_name == "pkshatech/RoSEtta-base-ja":
         texts = [f"query: {text}" for text in texts]
 
