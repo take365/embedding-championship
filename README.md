@@ -109,23 +109,32 @@ python all_scores.py pubene
 
 ## 8. 評価指標の概要 モデル一覧
 ### 🧠 OpenAI APIモデル
+※記載の内容はAIによる調査に基づくものです、ハルシネーションを含む可能性がありますのでご了承ください。
 ### 1. text-embedding-3-small
 概要: OpenAIが提供する高効率なテキスト埋め込みモデルで、1536次元のベクトルを生成します。前世代のtext-embedding-ada-002と比較して、精度と効率が向上しています。
-
 用途: 一般的なベクトル検索、セマンティック検索、クラスタリングなど。
-
+次元数：1,536
+パラメータ数：非公開（小型モデル）
+起動メモリ：API利用（ローカル不要）
+最大トークン数：8,191
+日本語対応：〇
+多言語対応：〇
+ライセンス：OpenAI独自
+その他：第3世代埋め込みの小型版。前世代モデル（ada-002）より高精度かつ低コスト（約1/5）での提供。クラウドAPI経由でのみ利用可能。
 参考リンク: 
 * [公式解説](https://platform.openai.com/docs/models/text-embedding-3-small)
 
-#### text-embedding-3-large
-
-* 高性能・高次元（3072次元）、多言語対応
-
-
 ### 2. text-embedding-3-large
 概要: OpenAIの高性能な埋め込みモデルで、3072次元のベクトルを生成します。多言語対応で、特に高精度な検索や分類タスクに適しています。
-
 用途: 高精度な多言語検索、分類、クラスタリングなど。
+次元数：3,072
+パラメータ数：非公開（大型モデル）
+起動メモリ：API利用（ローカル不要）
+最大トークン数：8,191
+日本語対応：〇
+多言語対応：〇
+ライセンス：OpenAI独自
+その他：高次元・高精度版。small版よりコストは上がるが、出力次元をAPIで任意に圧縮可能。クラウドAPI専用
 
 参考リンク: 
 * [公式解説](https://platform.openai.com/docs/guides/embeddings)
@@ -133,26 +142,45 @@ python all_scores.py pubene
 ### 🏠 ローカルモデル（Hugging Face）
 ### 3. sentence-transformers/paraphrase-multilingual-mpnet-base-v2
 概要: 50以上の言語に対応した多言語モデルで、768次元のベクトルを生成します。セマンティック検索やクラスタリングに適しています。
-
 用途: 多言語対応のセマンティック検索、文章類似度評価など。
+次元数：768
+パラメータ数：約2.78億
+起動メモリ：約0.5 GB (GPU) / 1.0 GB (CPU)
+最大トークン数：128（自動切り捨て）
+日本語対応：〇
+多言語対応：〇（50言語以上）
+ライセンス：Apache 2.0
+その他：XLM-RoBERTaベース。並列コーパスで学習し、言語間セマンティック検索に強み。Hugging Face上でローカル利用可。
 
 参考リンク: 
 * [Hugging Face](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)
 
 ### 4. pkshatech/RoSEtta-base-ja
 概要: 日本語に特化したテキスト埋め込みモデルで、1024トークンまでの長文に対応し、CPUでも効率的に動作します。
-
 用途: 日本語のセマンティック検索、文章類似度評価など。
-
+次元数：768
+パラメータ数：約1.6億（推定）
+起動メモリ：約0.3 GB / 0.6 GB
+最大トークン数：1,024
+日本語対応：〇（日本語特化）
+多言語対応：×
+ライセンス：Apache 2.0
+その他：RoFormerアーキテクチャ＋RoPE。大規模モデルを蒸留し日本語検索向けに最適化。入力文に「query:」「passage:」プレフィックス要。
 参考リンク: 
 * [Hugging Face](https://huggingface.co/pkshatech/RoSEtta-base-ja)
 
 
 ### 5. sbintuitions/sarashina-embedding-v1-1b
 概要: 1.2Bパラメータの日本語LLMをベースにしたモデルで、1792次元のベクトルを生成します。多段階の対照学習により高精度な埋め込みを実現しています。
-
 用途: 日本語のセマンティック検索、文章分類、クラスタリングなど。
-
+次元数：1,792
+パラメータ数：約12億
+起動メモリ：約2.4 GB / 4.8 GB
+最大トークン数：8,192
+日本語対応：〇
+多言語対応：×
+ライセンス：商用不可（独自）
+その他：1.2B日本語LLMをベースに対照学習。JMTEBで高評価。Llama系でLast-tokenプーリング。
 参考リンク: 
 * [Hugging Face](https://huggingface.co/sbintuitions/sarashina-embedding-v1-1b)
 
